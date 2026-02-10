@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+    Network Security Configuration
+    Defines trusted certificates and cleartext traffic policy
+    -->
+
+    <!-- Base configuration for all connections -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust system certificates (default) -->
+            <certificates src="system" />
+            <!-- Trust user-added certificates (for debugging) -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Debug configuration (only in debug builds) -->
+    <debug-overrides>
+        <trust-anchors>
+            <!-- Trust user certificates in debug builds (for Charles Proxy, etc.) -->
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
+
+    <!-- Domain-specific configurations (optional) -->
+    <!-- Uncomment and configure for production server -->
+    <!--
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">your-server.com</domain>
+        <pin-set expiration="2026-01-01">
+            <pin digest="SHA-256">base64-encoded-public-key-hash</pin>
+            <pin digest="SHA-256">backup-key-hash</pin>
+        </pin-set>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+    -->
+
+    <!-- Allow localhost for development -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
+
+    <!--
+    === CERTIFICATE PINNING (Production) ===
+
+    To add certificate pinning for your server:
+
+    1. Get your server's certificate hash:
+       openssl s_client -connect your-server.com:443 | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+
+    2. Add domain-config:
+       <domain-config>
+           <domain includeSubdomains="true">your-server.com</domain>
+           <pin-set expiration="2026-01-01">
+               <pin digest="SHA-256">YOUR_HASH_HERE</pin>
+           </pin-set>
+       </domain-config>
+
+    This prevents MITM attacks by ensuring only your certificate is trusted.
+    -->

