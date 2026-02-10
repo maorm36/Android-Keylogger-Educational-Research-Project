@@ -29,14 +29,14 @@ This is a comprehensive keylogger implementation demonstrating:
 
 ## 📷 Images from the project
 
-**The Android App:**
-<img width="300" height="500" alt="image" src="https://github.com/user-attachments/assets/e2a3b706-5018-4f87-b072-17859475b182" />  
+**The Android App:**<br>
+<img width="300" height="500" alt="image" src="https://github.com/user-attachments/assets/e2a3b706-5018-4f87-b072-17859475b182" /><br><br>
   
-**The Dashboard:**
-<img width="860" height="857" alt="image" src="https://github.com/user-attachments/assets/3ebf2d62-e84c-4d84-b141-37c342d09761" />  
+**The Dashboard:**<br>
+<img width="860" height="857" alt="image" src="https://github.com/user-attachments/assets/3ebf2d62-e84c-4d84-b141-37c342d09761" /><br><br>
   
-**The Attacked Device Screen Displayer:**
-<img width="1600" height="769" alt="image" src="https://github.com/user-attachments/assets/68c144db-1fe7-4cc4-aa2a-e821822ef631" />  
+**The Attacked Device Screen Displayer:**<br>
+<img width="1600" height="769" alt="image" src="https://github.com/user-attachments/assets/68c144db-1fe7-4cc4-aa2a-e821822ef631" /><br><br>  
   
 
 ## 🏗️ Architecture
