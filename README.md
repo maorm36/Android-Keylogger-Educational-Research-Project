@@ -30,7 +30,7 @@ This is a comprehensive keylogger implementation demonstrating:
 ## 📷 Images from the project
 
 **The Android App:**
-<img width="1600" height="860" alt="image" src="https://github.com/user-attachments/assets/7861ea61-053e-4cee-a96e-7374896ab880" />
+<img width="800" height="860" alt="image" src="https://github.com/user-attachments/assets/7861ea61-053e-4cee-a96e-7374896ab880" />
 
 **The Dashboard:**
 <img width="1600" height="860" alt="image" src="https://github.com/user-attachments/assets/45578ef9-c841-443c-8a12-449a5e5fe28d" />
