@@ -246,7 +246,7 @@ dashboardURL: "https://your-server.com/public/web_dashboard.html"
 
 ### Remote Monitoring
 
-- Access web dashboard at `http://your-ngrok-url/public/web_dashboard.html`
+- Access web dashboard at `http://your-server-url/public/web_dashboard.html`
 - View all captured data
 - Filter by event type
 
