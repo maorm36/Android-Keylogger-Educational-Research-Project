@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dashboard</title>
+
+    <!-- React (UMD) -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin
+            src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel (JSX in-browser) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* JSON toolbar above <pre> */
+        .json-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .copy-btn {
+            padding: 6px 10px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .copy-btn:hover {
+            background: #2a2a2a;
+        }
+
+        .copy-btn.copied {
+            background: #667eea;
+            border-color: #667eea;
+            color: #fff;
+        }
+
+        /* (optional but recommended) make JSON not tiny + keep scrollbar */
+        .event-text pre.event-json {
+            font-size: 14px; /* was 12px */
+            line-height: 1.45; /* was 1.35 */
+            max-height: 420px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0;
+            padding: 12px;
+            border-radius: 8px;
+            /* remove overflow-x: hidden; if you want horizontal scroll */
+        }
+
+        /* Search highlight */
+        mark.hl {
+            background: #ffd54a; /* yellow */
+            color: #111; /* readable on yellow */
+            padding: 0 2px;
+            border-radius: 3px;
+        }
+
+        /* Make highlight look good inside pre blocks too */
+        .event-text pre.event-json mark.hl {
+            background: #ffd54a;
+            color: #111;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+        }
+
+        /* Keep your original global pre style (skull uses it) */
+        pre {
+            color: white;
+            font-family: monospace;
+            font-size: 4px;
+            line-height: 1;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #1a1a1a;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .events-container {
+            background: #1a1a1a;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+
+        .events-container h2 {
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .event-item {
+            background: #222;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .event-item.sensitive {
+            border-left-color: #f44336;
+            background: #2a1a1a;
+        }
+
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .event-package {
+            font-weight: bold;
+            color: #667eea;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 70%;
+        }
+
+        .event-time {
+            color: #888;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .event-text {
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            background: #0f0f0f;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border: 1px solid #2a2a2a;
+            overflow: auto;
+        }
+
+        pre.event-json {
+            font-size: 14px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            word-break: break-word;
+
+            max-height: 420px;
+            overflow: auto;
+
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0 0;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+        }
+
+        /* Override tiny global pre ONLY for JSON blocks inside event-text */
+        .event-text pre.event-json {
+            font-size: 12px;
+            line-height: 1.35;
+            word-break: break-word;
+            color: #e0e0e0;
+            margin: 0;
+            max-height: 420px; /* adjust */
+            overflow: auto; /* adds scrollbars when needed */
+            padding: 12px;
+            border-radius: 8px;
+            white-space: pre;
+        }
+
+        .sensitive-badge {
+            background: #f44336;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-btn:hover {
+            background: #333;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .error {
+            background: #2a1a1a;
+            border: 1px solid #7a2a2a;
+            color: #ffb3b3;
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+        }
+
+        pre.skull-art {
+            font-family: monospace;
+            font-size: 6px;
+            line-height: 1;
+            color: white;
+            background: #000;
+            white-space: pre;
+            overflow: auto;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #222;
+            margin-bottom: 20px;
+        }
+
+        .meta-row {
+            font-size: 14px;
+            color: #888;
+            margin-top: 6px;
+        }
+
+        select, input {
+            background: #0f0f0f;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 8px 10px;
+            outline: none;
+        }
+
+        .pill {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #1a1a1a;
+        }
+    </style>
+</head>
+
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+    const {useEffect, useMemo, useState, useRef} = React;
+
+    // Change this to wherever your server exposes the JSON file:
+    const EVENTS_JSON_URL = "/public/userEvents.json";
+    // Fallback if you prefer: const EVENTS_JSON_URL = "/public/userEvents.json";
+
+    const openVisualTreeViewer = () => {
+        const url = new URL("json_viewer_layout.html", window.location.href).toString();
+        window.open(url, "_blank", "noopener,noreferrer");
+    };
+
+    function prettyJson(value) {
+        if (value == null) return "";
+
+        // If it's already an object/array
+        if (typeof value === "object") {
+            try {
+                return JSON.stringify(value, null, 2);
+            } catch {
+                return String(value);
+            }
+        }
+
+        // Numbers/booleans/etc.
+        if (typeof value !== "string") return String(value);
+
+        const s = value.trim();
+
+        // If it's a JSON string like "{...}" or "[...]"
+        if (
+            (s.startsWith("{") && s.endsWith("}")) ||
+            (s.startsWith("[") && s.endsWith("]"))
+        ) {
+            try {
+                return JSON.stringify(JSON.parse(s), null, 2);
+            } catch {
+                // fall through
+            }
+        }
+
+        // If it was accidentally stringified already: "\"{\\n ... }\""
+        if (s.startsWith('"') && s.endsWith('"')) {
+            try {
+                const unquoted = JSON.parse(s); // turns \n and \" into real characters
+                return prettyJson(unquoted);    // try again (one level)
+            } catch {
+                // fall through
+            }
+        }
+
+        // Not JSON → show as-is
+        return value;
+    }
+
+    function escapeRegExp(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function highlightText(text, query) {
+        const s = (text ?? "").toString();
+        const q = (query ?? "").toString().trim();
+        if (!q) return s;
+
+        const re = new RegExp(`(${escapeRegExp(q)})`, "ig");
+        const parts = s.split(re);
+
+        return parts.map((part, i) => {
+            const isMatch = i % 2 === 1; // capture-group split: matches are odd indices
+            return isMatch
+                ? <mark key={i} className="hl">{part}</mark>
+                : <React.Fragment key={i}>{part}</React.Fragment>;
+        });
+    }
+
+    async function copyToClipboard(text) {
+        const t = (text ?? "").toString();
+
+        // Modern API (works on HTTPS or localhost)
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(t);
+                return true;
+            }
+        } catch (_) {
+        }
+
+        // Fallback
+        try {
+            const ta = document.createElement("textarea");
+            ta.value = t;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "fixed";
+            ta.style.top = "-9999px";
+            ta.style.left = "-9999px";
+            document.body.appendChild(ta);
+            ta.select();
+            ta.setSelectionRange(0, ta.value.length);
+            const ok = document.execCommand("copy");
+            document.body.removeChild(ta);
+            return ok;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function expandMetadataDecoded(envelopes) {
+        return (Array.isArray(envelopes) ? envelopes : []).flatMap((env) => {
+            const decoded = env?.metadata_decoded;
+
+            // If no decoded array, keep the envelope as-is (optional)
+            if (!Array.isArray(decoded)) return [env];
+
+            // Each decoded object becomes a rendered "event"
+            return decoded.map((inner, idx) => ({
+                ...inner,
+
+                // inherit envelope fields (so filters & display work)
+                device_id: inner?.device_id ?? inner?.deviceId ?? env?.device_id ?? env?.deviceId ?? "",
+                session_id: inner?.session_id ?? env?.session_id,
+
+                // keep some envelope info for display/debug
+                envelope_event_type: env?.event_type ?? env?.eventType ?? env?.type ?? "envelope",
+                envelope_timestamp: env?.timestamp,
+                envelope_index: idx,
+            }));
+        });
+    }
+
+    function isEventObject(x) {
+        return !!x && typeof x === "object" && (
+            "event_type" in x || "eventType" in x || "type" in x
+        );
+    }
+
+    function normalizeEvents(payload) {
+        // Case A: already an array of event objects
+        if (Array.isArray(payload) && payload.every(isEventObject)) {
+            return payload;
+        }
+
+        // Case B: wrapper like { data: [...] } or { events: [...] }
+        if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+            const maybe = payload.data ?? payload.events;
+            if (Array.isArray(maybe)) {
+                return normalizeEvents(maybe);
+            }
+
+            // Case C: grouped by deviceId object: { "<deviceId>": [ ... ] } or nested {events:[...]}
+            return Object.entries(payload).flatMap(([deviceId, value]) => {
+                const list =
+                    Array.isArray(value) ? value :
+                        Array.isArray(value?.events) ? value.events :
+                            Array.isArray(value?.data) ? value.data :
+                                [];
+
+                return list
+                    .filter(isEventObject)
+                    .map(ev => ({
+                        ...ev,
+                        device_id: ev.device_id ?? ev.deviceId ?? deviceId
+                    }));
+            });
+        }
+
+        // Case D: array of device buckets (one per device)
+        if (Array.isArray(payload)) {
+            return payload.flatMap((bucket) => {
+                if (isEventObject(bucket)) return [bucket];
+
+                const deviceId = bucket?.device_id ?? bucket?.deviceId;
+                const list =
+                    Array.isArray(bucket?.events) ? bucket.events :
+                        Array.isArray(bucket?.data) ? bucket.data :
+                            [];
+
+                return list
+                    .filter(isEventObject)
+                    .map(ev => ({
+                        ...ev,
+                        device_id: ev.device_id ?? ev.deviceId ?? deviceId
+                    }));
+            });
+        }
+
+        return [];
+    }
+
+    function getType(e) {
+        return (
+            e?.event_type ??
+            e?.eventType ??
+            e?.type ??
+            e?.envelope_event_type ??
+            "unknown"
+        ).toString();
+    }
+
+    function getDevice(e) {
+        return (e?.device_id ?? e?.deviceId ?? "").toString();
+    }
+
+    function getTs(e) {
+        const t =
+            e?.timestamp ??
+            e?.time ??
+            e?.createdAt ??
+            e?.created_at ??
+            e?.envelope_timestamp;
+
+        const n = Number(t);
+        return Number.isFinite(n) ? n : Date.now();
+    }
+
+    function isSensitiveType(typeStr) {
+        const s = (typeStr ?? "").toString().toLowerCase();
+        return s.includes("sensitive") || s.includes("password") || s.includes("otp");
+    }
+
+    function Dashboard() {
+        const [events, setEvents] = useState([]);
+        const [filter, setFilter] = useState("all");
+        const [selectedDevice, setSelectedDevice] = useState("all");
+        const [search, setSearch] = useState("");
+        const [loading, setLoading] = useState(true);
+        const [error, setError] = useState("");
+        const [copiedKey, setCopiedKey] = useState("");
+        const copyResetRef = useRef(null);
+
+        const handleCopy = async (key, text) => {
+            const ok = await copyToClipboard(text);
+            if (!ok) return;
+
+            setCopiedKey(key);
+            if (copyResetRef.current) clearTimeout(copyResetRef.current);
+            copyResetRef.current = setTimeout(() => setCopiedKey(""), 1200);
+        };
+
+        const loadFromJsonFile = async () => {
+            setLoading(true);
+            setError("");
+
+            try {
+                const res = await fetch(EVENTS_JSON_URL, {cache: "no-store"});
+                if (!res.ok) {
+                    throw new Error(`Failed to load ${EVENTS_JSON_URL}\nHTTP ${res.status}: ${await res.text()}`);
+                }
+
+                const payload = await res.json();
+
+                // 1) normalize into a list of envelopes (works for grouped-by-device too)
+                const envelopes = normalizeEvents(payload);
+
+                // 2) expand metadata_decoded[] into real renderable events
+                const expanded = expandMetadataDecoded(envelopes);
+
+                // newest first
+                expanded.sort((a, b) => getTs(b) - getTs(a));
+
+                setEvents(expanded);
+            } catch (e) {
+                console.error(e);
+                setEvents([]);
+                setError(String(e?.message ?? e));
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        useEffect(() => {
+            loadFromJsonFile();
+            const interval = setInterval(loadFromJsonFile, 5 * 60_000);
+            return () => clearInterval(interval);
+        }, []);
+
+        const types = useMemo(() => {
+            const s = new Set(events.map(getType));
+            return Array.from(s).sort();
+        }, [events]);
+
+        const devices = useMemo(() => {
+            const s = new Set(events.map(getDevice).filter(Boolean));
+            return Array.from(s).sort();
+        }, [events]);
+
+        const filteredEvents = useMemo(() => {
+            const q = search.trim().toLowerCase();
+
+            return events.filter((e) => {
+                const t = getType(e);
+                const d = getDevice(e);
+
+                if (filter !== "all" && t !== filter) return false;
+                if (selectedDevice !== "all" && d !== selectedDevice) return false;
+
+                if (!q) return true;
+
+                const hay = JSON.stringify(e).toLowerCase();
+                return hay.includes(q);
+            });
+        }, [events, filter, selectedDevice, search]);
+
+        const uniqueDevicesCount = devices.length;
+
+        if (loading) {
+            return (
+                <div className="container">
+                    <div className="loading">Loading dashboard...</div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="container">
+                <div className="header">
+                    <h1>Dashboard</h1>
+                    <h3>Source: <b>{EVENTS_JSON_URL}</b></h3>
+                </div>
+
+                {error && <div className="error">{error}</div>}
+
+                <div className="stats-grid">
+                    <div className="stat-card">
+                        <h3>Total Events</h3>
+                        <div className="value">{events.length}</div>
+                    </div>
+
+                    <div className="stat-card">
+                        <h3>Unique Devices</h3>
+                        <div className="value">{uniqueDevicesCount}</div>
+                    </div>
+
+                    <div className="stat-card">
+                        <h3>Showing</h3>
+                        <div className="value">{filteredEvents.length}</div>
+                    </div>
+                </div>
+
+                {/* Keep the skull */}
+                <pre className="skull-art">
+{`
+                                                                                                                                                                                          __xxxXxxxxxxxxxxXXxxxxxxxxxxxx___.
+                                                                                                                                                                                    _gxXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!x_
+                                                                                                                                                                                 __x!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!x_
+                                                                                                                                                                               ,gXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx_
+                                                                                                                                                                             ,gXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!_
+                                                                                                                                                                           _!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!.
+                                                                                                                                                                          gXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXs
+                                                                                                                                                                        ,!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!.
+                                                                                                                                                                       iXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!
+                                                                                                                                                                      !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx!
+                                                                                                                                                                     ,XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx!
+                                                                                                                                                                     !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXi!
+                                                                                                                                                                     dXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                     !XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                      XXXXXXXXXXXXXXXXXXfvvVVXXXXXXXXXXXXXXXXXXXXXXXXXXvvvvvvvvXXXXXXXXXXXXXXXX!
+                                                                                                                                                                      !XXXXXXXXXXXXXXXf        'XXXXXXXXXXXXXXXXXXXXXf'        'XXXXXXXXXXXXXP
+                                                                                                                                                                       vXXXXXXXXXXXX!             !XXXXXXXXXXXXXXXXX!             !XXXXXXXXXP
+                                                                                                                                                                        XXXXXXXXXXv'               'VXXXXXXXXXXXXXXX               !XXXXXXXX!
+                                                                                                                                                                        !XXXXXXXXX.                 YXXXXXXXXXXXXX!                XXXXXXXXX
+                                                                                                                                                                         XXXXXXXXX!                 ,XXXXXXXXXXXXXX                VXXXXXXX!
+                                                                                                                                                                         'XXXXXXXX!                ,!XXXX ~~XXXXXXX               iXXXXXX~
+                                                                                                                                                                          'XXXXXXXX               ,XXXXXX   XXXXXXXX!             xXXXXXX!
+                                                                                                                                                                           !XXXXXXX!x           _xXXXXXXX   'YXXXXXX!          ,xXXXXXXXX
+                                                                                                                                                                            YXXXXXXXXX!s.X__gxx!XXXXXXXX'    VXXXXXXX!s. __gxx!XXXXXXXXXP
+                                                                                                                                                                             XXXXXXXXXXXXXXXXXXXXXXXXXX!      'XXXXXXXXXXXXXXXXXXXXXXXXX!
+                                                                                                                                                                             XXXXXXXXXXXXXXXXXXXXXXXXXP        'YXXXXXXXXXXXXXXXXXXXXXXX!
+                                                                                                                                                                             XXXXXXXXXXXXXXXXXXXXXXXX!     i    !XXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                             XXXXXXXXXXXXXXXXXXXXXXXX!     XX   !XXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                             XXXXXXXXXXXXXXXXXXXXXXXXx_   iXX_,_dXXXXXXXXXXXXXXXXXXXXXXXX
+                                                                                                                                                                             XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXP
+                                                                                                                                                                             XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!
+                                                                                                                                                                              ~vXvvvvXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXf
+                                                                                                                                                                                       'VXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXvvvvvv~
+                                                                                                                                                                                         'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX~
+                                                                                                                                                                                     _    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXv'
+                                                                                                                                                                                    -XX!  !XXXXXXX~XXXXXXXXXXXXXXXXXXXXXX~   Xxi
+                                                                                                                                                                                     YXX  '~ XXXXX XXXXXXXXXXXXXXXXXXXX'     iXX'
+                                                                                                                                                                                     !XX!    !XXX' XXXXXXXXXXXXXXXXXXXX      !XX
+                                                                                                                                                                                     !XXX    '~Vf  YXXXXXXXXXXXXXP YXXX     !XXX
+                                                                                                                                                                                     !XXX  ,_      !XXP YXXXfXXXX!  XXX     XXXV
+                                                                                                                                                                                     !XXX !XX           'XXP 'YXX!       ,.!XXX!
+                                                                                                                                                                                     !XXXi!XP  XX.                  ,_  !XXXXXX!
+                                                                                                                                                                                     iXXXx X!  XX! !Xx.  ,.     xs.,XXi !XXXXXXf
+                                                                                                                                                                                      XXXXXXXXXXXXXXXXX! _!XXx  dXXXXXXX.iXXXXXX
+                                                                                                                                                                                      VXXXXXXXXXXXXXXXXXXXXXXXxxXXXXXXXXXXXXXXX!
+                                                                                                                                                                                      YXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXV
+                                                                                                                                                                                       'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!
+                                                                                                                                                                                       'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXf
+                                                                                                                                                                                          VXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXf
+                                                                                                                                                                                            VXXXXXXXXXXXXXXXXXXXXXXXXXXXXv'
+                                                                                                                                                                                             ~vXXXXXXXXXXXXXXXXXXXXXXXf'
+                                                                                                                                                                                                 ~vXXXXXXXXXXXXXXXXv~
+                                                                                                                                                                                                    '~VvXXXXXXXV~~
+                                                                                                                                                                                                          ~~
+`}
+        </pre>
+
+                <div className="events-container">
+                    <h2>Captured Events</h2>
+
+                    <div className="filter-bar">
+
+                        <span className="pill">
+              <span style={{color: "#888", fontSize: 14}}>Type</span>
+              <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+                <option value="all">All</option>
+                  {types.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </span>
+
+                        <span className="pill">
+              <span style={{color: "#888", fontSize: 14}}>Device</span>
+              <select value={selectedDevice} onChange={(e) => setSelectedDevice(e.target.value)}>
+                <option value="all">All</option>
+                  {devices.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </span>
+
+                        <span className="pill" style={{flex: "1 1 260px"}}>
+              <span style={{color: "#888", fontSize: 14}}>Search</span>
+              <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search in event JSON..."
+                  style={{width: "100%"}}
+              />
+            </span>
+
+                        <button className="filter-btn" onClick={loadFromJsonFile}>
+                            Refresh
+                        </button>
+
+                        <button className="filter-btn" onClick={openVisualTreeViewer}>
+                            Open Visual Tree Screen Viewer
+                        </button>
+
+                    </div>
+
+                    {filteredEvents.length === 0 ? (
+                        <div style={{textAlign: "center", padding: "40px", color: "#888"}}>
+                            No events to display
+                        </div>
+                    ) : (
+                        filteredEvents.map((event, index) => {
+                            const typeStr = getType(event);
+                            const sensitive = isSensitiveType(typeStr);
+                            const ts = getTs(event);
+
+                            const device = getDevice(event);
+                            const className = event.className ?? "";
+
+                            let overviewText = "";
+                            const showText = typeStr === "visual_tree_snapshot" || typeStr === "content_tree";
+
+                            if (showText) {
+                                overviewText = event?.text ?? "";
+                            }
+
+                            const headerLine = `${device || "Device"}${className ? ` • ${className}` : ""}`;
+
+                            const snapshotJson = overviewText ? prettyJson(overviewText) : "";
+
+                            const {text, isPassword, ...eventWithoutData} = event ?? {};
+                            const eventJson = JSON.stringify(eventWithoutData, null, 2);
+
+                            const snapshotCopyKey = `${index}-snapshot`;
+                            const eventCopyKey = `${index}-event`;
+
+                            return (
+                                <div
+                                    key={index}
+                                    className={`event-item ${sensitive ? "sensitive" : ""}`}
+                                >
+                                    <div className="event-header">
+                                        <div className="event-package">
+                                            {highlightText(headerLine, search)}
+                                        </div>
+
+                                        <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                      <span
+                          className="sensitive-badge"
+                          style={sensitive ? undefined : {background: "#667eea"}}
+                      >
+                        {typeStr}
+                      </span>
+                                            <span className="event-time">{new Date(ts).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{fontSize: 14, color: "#888"}}>
+                                        Type: {highlightText(typeStr, search)}
+                                        {className ? <>{" | Class: "}{highlightText(className, search)}</> : ""}
+                                    </div>
+
+                                    {overviewText ? (
+                                        <div className="event-text" style={{marginTop: 10}}>
+                                            <div className="json-toolbar">
+                                                <button
+                                                    className={`copy-btn ${copiedKey === snapshotCopyKey ? "copied" : ""}`}
+                                                    onClick={() => handleCopy(snapshotCopyKey, snapshotJson)}
+                                                >
+                                                    {copiedKey === snapshotCopyKey ? "Copied" : "Copy"}
+                                                </button>
+                                            </div>
+
+                                            <pre className="event-json">
+                                              {highlightText(snapshotJson, search)}
+                                            </pre>
+                                        </div>
+                                    ) : null}
+
+                                    <div className="event-text" style={{marginTop: 10}}>
+                                        <div className="json-toolbar">
+                                            <button
+                                                className={`copy-btn ${copiedKey === eventCopyKey ? "copied" : ""}`}
+                                                onClick={() => handleCopy(eventCopyKey, eventJson)}
+                                            >
+                                                {copiedKey === eventCopyKey ? "Copied" : "Copy"}
+                                            </button>
+                                        </div>
+
+                                        <pre className="event-json">
+                                            {highlightText(eventJson, search)}
+                                        </pre>
+                                    </div>
+
+
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // Keep render style consistent with your current file
+    ReactDOM.render(<Dashboard/>, document.getElementById("root"));
+</script>
+</body>
+</html>

@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Extended UI Bounds Viewer</title>
+    <style>
+        :root {
+            --bg: #f5f5f5;
+            --panel: #ffffff;
+            --ink: #111;
+            --muted: #666;
+            --border: #ddd;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+            display: grid;
+            grid-template-columns: 560px 1fr;
+            height: 100vh;
+        }
+
+        .panel {
+            padding: 14px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            overflow: auto;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .row > * {
+            margin: 4px 0;
+        }
+
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 100%;
+        }
+
+        textarea {
+            width: 100%;
+            height: 36vh;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12px;
+        }
+
+        .grid2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            background: #fff;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        label.chk {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 13px;
+            color: #222;
+        }
+
+        label.chk input {
+            transform: translateY(1px);
+        }
+
+        .canvasWrap {
+            position: relative;
+            overflow: hidden;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: 52px 1fr;
+        }
+
+        .topbar {
+            background: #222;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 14px;
+        }
+
+        .topbar .title {
+            font-weight: 600;
+        }
+
+        .topbar .hint {
+            font-size: 12px;
+            opacity: .85;
+        }
+
+        .stage {
+            position: relative;
+            overflow: hidden;
+            background: #1d1d1d;
+        }
+
+        canvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #f5f5f5;
+        }
+
+        .tooltip {
+            position: absolute;
+            pointer-events: none;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #bbb;
+            border-radius: 10px;
+            padding: 10px;
+            max-width: 420px;
+            font-size: 12px;
+            color: #111;
+            box-shadow: 0 8px 26px rgba(0, 0, 0, 0.18);
+            display: none;
+        }
+
+        .tooltip pre {
+            margin: 6px 0 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .status {
+            margin-top: 8px;
+            font-size: 13px;
+        }
+
+        .list {
+            max-height: 22vh;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px;
+            background: #fff;
+        }
+
+        .item {
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .item:hover {
+            background: #f3f6ff;
+            border-color: #d6e2ff;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            background: #f0f0f0;
+            color: #333;
+            margin-left: 6px;
+        }
+
+        .kbd {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12px;
+            background: #333;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="panel">
+    <h2 style="margin: 0 0 8px;">UI Bounds Viewer</h2>
+    <div class="muted">Paste your hierarchy JSON, then use filters + pan/zoom on the right.</div>
+
+    <div class="row" style="margin-top: 10px;">
+        <button id="renderBtn">Render</button>
+        <button id="fitBtn">Fit</button>
+        <button id="resetBtn">Reset</button>
+        <button id="exportBtn">Export PNG</button>
+        <button id="clearBtn">Clear</button>
+    </div>
+
+    <div class="grid2" style="margin-top: 8px;">
+        <div class="card">
+            <div class="muted" style="margin-bottom:6px;">Screen size</div>
+            <div class="row">
+                <label class="muted">W</label><input id="w" type="number" value="1080" style="width:110px;">
+                <label class="muted">H</label><input id="h" type="number" value="2400" style="width:110px;">
+            </div>
+        </div>
+        <div class="card">
+            <div class="muted" style="margin-bottom:6px;">Filters</div>
+            <div class="row">
+                <label class="muted">Min area</label>
+                <input id="minArea" type="number" value="0" style="width:140px;"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+        <div class="muted" style="margin-bottom:6px;">Search (label / viewId / className)</div>
+        <input id="q" type="text" placeholder="e.g. googlequicksearchbox OR TextView OR חיפוש"/>
+        <div class="row" style="margin-top:8px;">
+            <label class="chk"><input id="onlyLabeled" type="checkbox">Only labeled</label>
+            <label class="chk"><input id="onlyViewId" type="checkbox">Only with viewId</label>
+            <label class="chk"><input id="hideContainers" type="checkbox" checked>Hide containers</label>
+        </div>
+        <div class="row">
+            <label class="chk"><input id="onlyTextView" type="checkbox">Only TextView</label>
+            <label class="chk"><input id="onlyImageView" type="checkbox">Only ImageView</label>
+        </div>
+        <div class="muted" style="margin-top:8px;">
+            Hover to inspect • Click to lock selection • Drag to pan • Wheel to zoom
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+        <div class="muted" style="margin-bottom:6px;">JSON</div>
+        <textarea id="json" placeholder='Paste your JSON here...'></textarea>
+        <div id="status" class="status muted"></div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+        <div class="row" style="justify-content: space-between;">
+            <div><b>Matches</b> <span class="pill" id="countPill">0</span></div>
+            <div class="muted">Click item to center</div>
+        </div>
+        <div class="list" id="list"></div>
+    </div>
+
+    <div class="muted" style="margin-top:10px;">
+        Tip: If your JSON is huge, start with <span class="kbd">Only labeled</span> + <span class="kbd">Min area</span>
+        to reduce clutter.
+    </div>
+</div>
+
+<div class="canvasWrap">
+    <div class="topbar">
+        <div class="title">Canvas</div>
+        <div class="hint">Drag = pan • Wheel = zoom • Click = lock tooltip</div>
+    </div>
+    <div class="stage" id="stage">
+        <canvas id="c"></canvas>
+        <div class="tooltip" id="tip"></div>
+    </div>
+</div>
+
+<script>
+    const $ = (id) => document.getElementById(id);
+
+    function clamp(v, a, b) {
+        return Math.max(a, Math.min(b, v));
+    }
+
+    function normBounds(b, W, H) {
+        if (!b) return null;
+        let l = Math.min(b.left, b.right), r = Math.max(b.left, b.right);
+        let t = Math.min(b.top, b.bottom), bo = Math.max(b.top, b.bottom);
+
+        // Clip (but keep some off-screen content if desired; here we clip)
+        l = Math.max(0, l);
+        t = Math.max(0, t);
+        r = Math.min(W, r);
+        bo = Math.min(H, bo);
+
+        if (r <= l || bo <= t) return null;
+        return {l, t, r, bo, w: r - l, h: bo - t};
+    }
+
+    function labelOf(n) {
+        const t = (n.text ?? "").toString().trim();
+        if (t) return t;
+        const cd = (n.contentDescription ?? "").toString().trim();
+        if (cd) return cd;
+        return "";
+    }
+
+    function walkIterative(root) {
+        const stack = [{node: root, depth: 0}];
+        const out = [];
+        while (stack.length) {
+            const cur = stack.pop();
+            out.push(cur);
+            const kids = cur.node.children;
+            if (Array.isArray(kids)) {
+                for (let i = kids.length - 1; i >= 0; i--) {
+                    stack.push({node: kids[i], depth: cur.depth + 1});
+                }
+            }
+        }
+        return out;
+    }
+
+    function isContainerClass(cls) {
+        // very rough heuristic
+        return /Layout|ViewGroup|FrameLayout|LinearLayout|RelativeLayout|ScreenView/i.test(cls || "");
+    }
+
+    function short(s, n = 48) {
+        s = (s ?? "").toString();
+        return s.length > n ? (s.slice(0, n) + "…") : s;
+    }
+
+    // --- View transform (world: UI pixels; screen: canvas pixels) ---
+    const view = {
+        scale: 0.35,
+        ox: 20,  // screen offset x
+        oy: 20,  // screen offset y
+    };
+
+    function worldToScreen(x, y) {
+        return {x: x * view.scale + view.ox, y: y * view.scale + view.oy};
+    }
+
+    function screenToWorld(x, y) {
+        return {x: (x - view.ox) / view.scale, y: (y - view.oy) / view.scale};
+    }
+
+    // --- Spatial index for picking ---
+    const grid = {
+        cell: 70,
+        buckets: new Map(), // key "cx,cy" -> array of node indices
+        W: 1080, H: 2400
+    };
+
+    function gridKey(cx, cy) {
+        return `${cx},${cy}`;
+    }
+
+    function buildGrid(nodes, W, H) {
+        grid.buckets.clear();
+        grid.W = W;
+        grid.H = H;
+
+        const cell = grid.cell;
+        for (let i = 0; i < nodes.length; i++) {
+            const b = nodes[i].b;
+            const cx0 = Math.floor(b.l / cell);
+            const cy0 = Math.floor(b.t / cell);
+            const cx1 = Math.floor((b.r - 1) / cell);
+            const cy1 = Math.floor((b.bo - 1) / cell);
+
+            for (let cy = cy0; cy <= cy1; cy++) {
+                for (let cx = cx0; cx <= cx1; cx++) {
+                    const k = gridKey(cx, cy);
+                    if (!grid.buckets.has(k)) grid.buckets.set(k, []);
+                    grid.buckets.get(k).push(i);
+                }
+            }
+        }
+    }
+
+    function pickNode(nodes, wx, wy) {
+        const cell = grid.cell;
+        const cx = Math.floor(wx / cell);
+        const cy = Math.floor(wy / cell);
+        const k = gridKey(cx, cy);
+        const arr = grid.buckets.get(k);
+        if (!arr) return -1;
+
+        // pick smallest-area box that contains point (topmost-ish)
+        let best = -1;
+        let bestArea = Infinity;
+        for (const idx of arr) {
+            const b = nodes[idx].b;
+            if (wx >= b.l && wx <= b.r && wy >= b.t && wy <= b.bo) {
+                if (nodes[idx].area < bestArea) {
+                    bestArea = nodes[idx].area;
+                    best = idx;
+                }
+            }
+        }
+        return best;
+    }
+
+    // --- Rendering ---
+    let model = {
+        root: null,
+        allNodes: [],
+        drawNodes: [],
+        W: 1080,
+        H: 2400,
+        lockedPick: -1,
+        hoverPick: -1
+    };
+
+    function colorFor(n) {
+        const cls = n.cls || "";
+        if (/TextView/i.test(cls)) return "rgba(255, 235, 170, 0.55)";
+        if (/ImageView/i.test(cls)) return "rgba(210, 235, 255, 0.55)";
+        if (/AppWidgetHostView/i.test(cls)) return "rgba(215, 245, 220, 0.55)";
+        if (isContainerClass(cls)) return "rgba(200, 200, 200, 0.18)";
+        return "rgba(240, 220, 255, 0.40)";
+    }
+
+    function strokeFor(n) {
+        const cls = n.cls || "";
+        if (/TextView/i.test(cls)) return "#7a5a00";
+        if (/ImageView/i.test(cls)) return "#0b4b7a";
+        if (/AppWidgetHostView/i.test(cls)) return "#0b6b2b";
+        if (isContainerClass(cls)) return "#888";
+        return "#6a2c7a";
+    }
+
+
+    function isUninstallActionButton(n) {
+        // Hide MIUI uninstall dialog action buttons: "ביטול" and "הסר התקנה"
+        const label = (n.label || "").trim();
+        if (label === "ביטול" || label === "הסר התקנה" || label === "הסרת התקנת היישום תסיר את כל הנתונים שלו.") return true;
+
+        const vid = (n.viewId || "").trim();
+        // Safer than label-only: matches com.miui.home:id/btnCancel / btnOk
+        if (/\/btnCancel$/.test(vid) || /\/btnOk$/.test(vid)) return true;
+
+        return false;
+    }
+
+    function applyFilters(allNodes) {
+        const q = $("q").value.trim().toLowerCase();
+        const onlyLabeled = $("onlyLabeled").checked;
+        const onlyViewId = $("onlyViewId").checked;
+        const hideContainers = $("hideContainers").checked;
+        const onlyTextView = $("onlyTextView").checked;
+        const onlyImageView = $("onlyImageView").checked;
+
+        const minArea = parseInt($("minArea").value || "0", 10);
+
+        let out = allNodes.filter(n => n.area >= minArea);
+
+        // Always hide the two uninstall-action buttons so they don't clutter the view
+        out = out.filter(n => !isUninstallActionButton(n));
+
+        if (onlyLabeled) out = out.filter(n => !!n.label);
+        if (onlyViewId) out = out.filter(n => !!n.viewId);
+
+        if (onlyTextView) out = out.filter(n => /TextView/i.test(n.cls));
+        if (onlyImageView) out = out.filter(n => /ImageView/i.test(n.cls));
+
+        if (hideContainers) out = out.filter(n => !isContainerClass(n.cls));
+
+        if (q) {
+            out = out.filter(n => {
+                const hay = `${n.label} ${n.viewId} ${n.cls}`.toLowerCase();
+                return hay.includes(q);
+            });
+        }
+
+        // draw big-to-small so small is on top
+        out.sort((a, b) => b.area - a.area);
+        return out;
+    }
+
+    function setupCanvasSize() {
+        const stage = $("stage");
+        const rect = stage.getBoundingClientRect();
+        const canvas = $("c");
+        canvas.width = Math.floor(rect.width);
+        canvas.height = Math.floor(rect.height);
+    }
+
+    function draw() {
+        setupCanvasSize();
+        const canvas = $("c");
+        const ctx = canvas.getContext("2d");
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#1d1d1d";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // draw a "screen" backdrop for world bounds
+        const tl = worldToScreen(0, 0);
+        const br = worldToScreen(model.W, model.H);
+
+        ctx.fillStyle = "#e8e8e8";
+        ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+
+        // Draw nodes
+        const nodes = model.drawNodes;
+        for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i];
+            const b = n.b;
+
+            const p0 = worldToScreen(b.l, b.t);
+            const p1 = worldToScreen(b.r, b.bo);
+
+            const w = p1.x - p0.x, h = p1.y - p0.y;
+            if (w < 1 || h < 1) continue;
+
+            ctx.fillStyle = colorFor(n);
+            ctx.strokeStyle = strokeFor(n);
+            ctx.lineWidth = 2;
+
+            ctx.fillRect(p0.x, p0.y, w, h);
+            ctx.strokeRect(p0.x, p0.y, w, h);
+
+            // label box (only if big enough on screen)
+            if (n.label && w > 70 && h > 35) {
+                const txt = short(n.label, 28);
+                ctx.font = (w < 240 ? "12px sans-serif" : "14px sans-serif");
+                const tw = ctx.measureText(txt).width;
+                ctx.fillStyle = "rgba(255,255,255,0.92)";
+                ctx.fillRect(p0.x + 4, p0.y + 4, tw + 16, 20);
+                ctx.fillStyle = "#111";
+                ctx.fillText(txt, p0.x + 12, p0.y + 18);
+            }
+        }
+
+        // Highlight picked node (hover or locked)
+        const idx = model.lockedPick >= 0 ? model.lockedPick : model.hoverPick;
+        if (idx >= 0) {
+            const n = model.drawNodes[idx];
+            const b = n.b;
+            const p0 = worldToScreen(b.l, b.t);
+            const p1 = worldToScreen(b.r, b.bo);
+            ctx.save();
+            ctx.strokeStyle = "#ff2d2d";
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 6]);
+            ctx.strokeRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+            ctx.restore();
+        }
+    }
+
+    function setStatus(msg) {
+        $("status").textContent = msg;
+    }
+
+    function render() {
+        model.lockedPick = -1;
+        model.hoverPick = -1;
+
+        model.W = parseInt($("w").value, 10);
+        model.H = parseInt($("h").value, 10);
+
+        let root;
+        try {
+            root = JSON.parse($("json").value);
+        } catch (e) {
+            setStatus("❌ Invalid JSON (parse error). Make sure you pasted the full JSON.");
+            console.error(e);
+            return;
+        }
+
+        const raw = walkIterative(root);
+
+        const allNodes = [];
+        for (const it of raw) {
+            const n = it.node;
+            const b = normBounds(n.bounds, model.W, model.H);
+            if (!b) continue;
+
+            const label = labelOf(n);
+            const cls = n.className || "";
+            const viewId = n.viewId || "";
+            const a = b.w * b.h;
+
+            // keep everything; filters will decide what to draw
+            allNodes.push({
+                b,
+                label,
+                cls,
+                viewId,
+                depth: it.depth,
+                area: a
+            });
+        }
+
+        model.allNodes = allNodes;
+        model.drawNodes = applyFilters(allNodes);
+        buildGrid(model.drawNodes, model.W, model.H);
+
+        updateList();
+        fitToScreen();
+        draw();
+
+        $("countPill").textContent = model.drawNodes.length.toString();
+        setStatus(`✅ Parsed ${raw.length} nodes, drawable after filters: ${model.drawNodes.length}`);
+    }
+
+    function updateList() {
+        const list = $("list");
+        list.innerHTML = "";
+
+        const nodes = model.drawNodes;
+        const maxItems = 200; // keep UI responsive
+        for (let i = 0; i < Math.min(nodes.length, maxItems); i++) {
+            const n = nodes[i];
+            const div = document.createElement("div");
+            div.className = "item";
+            const main = n.label ? n.label : (n.viewId ? n.viewId : n.cls);
+            div.innerHTML = `
+      <div><b>${escapeHtml(short(main, 56))}</b></div>
+      <div class="muted">${escapeHtml(short(n.viewId || "", 60))} <span class="pill">${escapeHtml(short(n.cls, 28))}</span></div>
+      <div class="muted">[${n.b.l},${n.b.t}] - [${n.b.r},${n.b.bo}]</div>
+    `;
+            div.addEventListener("click", () => {
+                // center view on node
+                centerOn(n);
+                // lock selection by finding current index (after filters/sorts, this is still 'i')
+                model.lockedPick = i;
+                showTooltipForIndex(i, true);
+                draw();
+            });
+            list.appendChild(div);
+        }
+
+        if (nodes.length > maxItems) {
+            const more = document.createElement("div");
+            more.className = "muted";
+            more.style.padding = "8px";
+            more.textContent = `Showing first ${maxItems} of ${nodes.length} matches. Narrow filters/search to see others.`;
+            list.appendChild(more);
+        }
+    }
+
+    function escapeHtml(s) {
+        return (s ?? "").toString()
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    function fitToScreen() {
+        const stage = $("stage");
+        const rect = stage.getBoundingClientRect();
+        const pad = 20;
+
+        const sx = (rect.width - pad * 2) / model.W;
+        const sy = (rect.height - pad * 2) / model.H;
+        view.scale = Math.max(0.02, Math.min(sx, sy));
+
+        const tl = worldToScreen(0, 0);
+        const br = worldToScreen(model.W, model.H);
+
+        // center
+        const worldW = br.x - tl.x;
+        const worldH = br.y - tl.y;
+        view.ox += (rect.width - worldW) / 2 - tl.x;
+        view.oy += (rect.height - worldH) / 2 - tl.y;
+
+        draw();
+    }
+
+    function resetView() {
+        view.scale = 0.35;
+        view.ox = 0;
+        view.oy = 0;
+        // Center the device frame
+        const stage = $("stage");
+        const rect = stage.getBoundingClientRect();
+        const worldW = model.W * view.scale;
+        const worldH = model.H * view.scale;
+        view.ox = (rect.width - worldW) / 2;
+        view.oy = (rect.height - worldH) / 2;
+        draw();
+    }
+
+    function centerOn(n) {
+        const stage = $("stage");
+        const rect = stage.getBoundingClientRect();
+        const cx = (n.b.l + n.b.r) / 2;
+        const cy = (n.b.t + n.b.bo) / 2;
+
+        // put (cx,cy) at center of screen
+        view.ox = rect.width / 2 - cx * view.scale;
+        view.oy = rect.height / 2 - cy * view.scale;
+        draw();
+    }
+
+    // --- Tooltip ---
+    function tooltipText(n) {
+        const lines = [];
+        if (n.label) lines.push(`label: ${n.label}`);
+        if (n.viewId) lines.push(`viewId: ${n.viewId}`);
+        lines.push(`class: ${n.cls}`);
+        lines.push(`bounds: [${n.b.l}, ${n.b.t}] - [${n.b.r}, ${n.b.bo}]  (w=${n.b.w}, h=${n.b.h})`);
+        lines.push(`area: ${n.area}`);
+        return lines.join("\n");
+    }
+
+    function showTooltipForIndex(idx, locked = false, clientX = 0, clientY = 0) {
+        const tip = $("tip");
+        const n = model.drawNodes[idx];
+        if (!n) {
+            tip.style.display = "none";
+            return;
+        }
+
+        tip.style.display = "block";
+        tip.style.borderColor = locked ? "#ff2d2d" : "#bbb";
+        tip.innerHTML = `<b>${escapeHtml(n.label || n.viewId || n.cls)}</b>
+<pre>${escapeHtml(tooltipText(n))}</pre>`;
+
+        // position
+        const stage = $("stage").getBoundingClientRect();
+        const x = clamp(clientX - stage.left + 14, 8, stage.width - 440);
+        const y = clamp(clientY - stage.top + 14, 8, stage.height - 220);
+        tip.style.left = `${x}px`;
+        tip.style.top = `${y}px`;
+    }
+
+    function hideTooltip() {
+        $("tip").style.display = "none";
+    }
+
+    // --- Interaction: pan/zoom + picking ---
+    let dragging = false;
+    let last = {x: 0, y: 0};
+
+    $("stage").addEventListener("mousedown", (e) => {
+        dragging = true;
+        last = {x: e.clientX, y: e.clientY};
+    });
+
+    window.addEventListener("mouseup", () => {
+        dragging = false;
+    });
+
+    window.addEventListener("mousemove", (e) => {
+        if (!model.drawNodes.length) return;
+
+        if (dragging) {
+            const dx = e.clientX - last.x;
+            const dy = e.clientY - last.y;
+            view.ox += dx;
+            view.oy += dy;
+            last = {x: e.clientX, y: e.clientY};
+            draw();
+            return;
+        }
+
+        // hover picking (unless locked)
+        if (model.lockedPick >= 0) return;
+
+        const stage = $("stage").getBoundingClientRect();
+        const sx = e.clientX - stage.left;
+        const sy = e.clientY - stage.top;
+        const w = screenToWorld(sx, sy);
+
+        const idx = pickNode(model.drawNodes, w.x, w.y);
+        model.hoverPick = idx;
+
+        if (idx >= 0) {
+            showTooltipForIndex(idx, false, e.clientX, e.clientY);
+        } else {
+            hideTooltip();
+        }
+        draw();
+    });
+
+    $("stage").addEventListener("click", (e) => {
+        if (!model.drawNodes.length) return;
+
+        const stage = $("stage").getBoundingClientRect();
+        const sx = e.clientX - stage.left;
+        const sy = e.clientY - stage.top;
+        const w = screenToWorld(sx, sy);
+
+        const idx = pickNode(model.drawNodes, w.x, w.y);
+        if (idx >= 0) {
+            // toggle lock
+            if (model.lockedPick === idx) {
+                model.lockedPick = -1;
+                hideTooltip();
+            } else {
+                model.lockedPick = idx;
+                showTooltipForIndex(idx, true, e.clientX, e.clientY);
+            }
+        } else {
+            model.lockedPick = -1;
+            hideTooltip();
+        }
+        draw();
+    });
+
+    $("stage").addEventListener("wheel", (e) => {
+        if (!model.drawNodes.length) return;
+        e.preventDefault();
+
+        const stage = $("stage").getBoundingClientRect();
+        const sx = e.clientX - stage.left;
+        const sy = e.clientY - stage.top;
+
+        // zoom around cursor
+        const before = screenToWorld(sx, sy);
+        const zoom = Math.exp(-e.deltaY * 0.0015);
+        const newScale = clamp(view.scale * zoom, 0.02, 8.0);
+
+        view.scale = newScale;
+        const after = worldToScreen(before.x, before.y);
+
+        // keep cursor stable
+        view.ox += sx - after.x;
+        view.oy += sy - after.y;
+
+        draw();
+    }, {passive: false});
+
+    // --- Buttons / controls ---
+    $("renderBtn").addEventListener("click", render);
+    $("fitBtn").addEventListener("click", fitToScreen);
+    $("resetBtn").addEventListener("click", resetView);
+    $("clearBtn").addEventListener("click", () => {
+        $("json").value = "";
+        $("status").textContent = "";
+        $("list").innerHTML = "";
+        $("countPill").textContent = "0";
+        model.allNodes = [];
+        model.drawNodes = [];
+        hideTooltip();
+        draw();
+    });
+
+    $("exportBtn").addEventListener("click", () => {
+        // export what you see (screen canvas)
+        const canvas = $("c");
+        const a = document.createElement("a");
+        a.download = "ui-bounds-view.png";
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+    });
+
+    // Re-apply filters live
+    function reFilter() {
+        if (!model.allNodes.length) return;
+        model.lockedPick = -1;
+        model.hoverPick = -1;
+        model.drawNodes = applyFilters(model.allNodes);
+        buildGrid(model.drawNodes, model.W, model.H);
+        $("countPill").textContent = model.drawNodes.length.toString();
+        updateList();
+        hideTooltip();
+        draw();
+    }
+
+    ["q", "minArea", "onlyLabeled", "onlyViewId", "hideContainers", "onlyTextView", "onlyImageView"].forEach(id => {
+        $(id).addEventListener("input", reFilter);
+        $(id).addEventListener("change", reFilter);
+    });
+
+    // Initial canvas size & redraw on resize
+    window.addEventListener("resize", () => { draw(); fitToScreen(); });
+    setupCanvasSize();
+    draw();
+    fitToScreen();
+</script>
+
+</body>
+</html>
