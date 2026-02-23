@@ -11,9 +11,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import com.android.myapp.core.BatteryConfig
 import com.android.myapp.receiver.BleScanReceiver
+import timber.log.Timber
 
 /**
  * Passive BLE Scanner - The Core of the Mesh Wake System
@@ -24,13 +24,12 @@ import com.android.myapp.receiver.BleScanReceiver
  *
  * Uses PendingIntent-based scanning which survives app death and Doze mode.
  *
- * Now uses BatteryConfig for power-optimized settings.
+ * Uses BatteryConfig for power-optimized settings.
  */
 class PassiveBleScanner(private val context: Context) {
 
     companion object {
         private const val TAG = "PassiveBleScanner"
-
         const val ACTION_SCAN_RESULT = "com.android.myapp.BLE_SCAN_RESULT"
         const val SCAN_REQUEST_CODE = 2001
     }
@@ -38,7 +37,6 @@ class PassiveBleScanner(private val context: Context) {
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val scanner: BluetoothLeScanner?
         get() = bluetoothManager.adapter?.bluetoothLeScanner
-
     private var lastDeviceSeenTime = System.currentTimeMillis()
     private val handler = Handler(Looper.getMainLooper())
     private var isScanning = false
@@ -58,13 +56,14 @@ class PassiveBleScanner(private val context: Context) {
     @SuppressLint("MissingPermission")
     fun startPersistentScanning() {
         val bleScanner = scanner
+
         if (bleScanner == null) {
-            Log.e(TAG, "BLE Scanner not available")
+            Timber.tag(TAG).e("BLE Scanner not available")
             return
         }
 
         if (isScanning) {
-            Log.d(TAG, "Already scanning")
+            Timber.tag(TAG).d("Already scanning")
             return
         }
 
@@ -83,23 +82,23 @@ class PassiveBleScanner(private val context: Context) {
                 // Opportunistic - requires Android 8+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     scanSettingsBuilder.setScanMode(ScanSettings.SCAN_MODE_OPPORTUNISTIC)
-                    Log.d(TAG, "Using OPPORTUNISTIC scan mode (lowest power)")
+                    Timber.tag(TAG).d("Using OPPORTUNISTIC scan mode (lowest power)")
                 } else {
                     scanSettingsBuilder.setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-                    Log.d(TAG, "Falling back to LOW_POWER (Android < 8)")
+                    Timber.tag(TAG).d("Falling back to LOW_POWER (Android < 8)")
                 }
             }
             0 -> {
                 scanSettingsBuilder.setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-                Log.d(TAG, "Using LOW_POWER scan mode")
+                Timber.tag(TAG).d("Using LOW_POWER scan mode")
             }
             1 -> {
                 scanSettingsBuilder.setScanMode(ScanSettings.SCAN_MODE_BALANCED)
-                Log.d(TAG, "Using BALANCED scan mode")
+                Timber.tag(TAG).d("Using BALANCED scan mode")
             }
             2 -> {
                 scanSettingsBuilder.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                Log.d(TAG, "Using LOW_LATENCY scan mode (highest power)")
+                Timber.tag(TAG).d("Using LOW_LATENCY scan mode (highest power)")
             }
         }
 
@@ -122,26 +121,30 @@ class PassiveBleScanner(private val context: Context) {
         )
 
         try {
-            val result = bleScanner.startScan(scanFilters, scanSettings, pendingIntent)
+            val result = bleScanner.startScan(
+                scanFilters,
+                scanSettings,
+                pendingIntent
+            )
 
             when (result) {
                 0 -> {
                     isScanning = true
-                    Log.d(TAG, "✓ Background BLE scanning started - detecting ALL nearby devices")
-                    Log.d(TAG, "  Profile: ${BatteryConfig.currentProfile}")
-                    Log.d(TAG, "  Report Delay: ${BatteryConfig.bleScanReportDelayMs / 1000}s")
+                    Timber.tag(TAG).d("✓ Background BLE scanning started - detecting ALL nearby devices")
+                    Timber.tag(TAG).d("  Profile: ${BatteryConfig.currentProfile}")
+                    Timber.tag(TAG).d("  Report Delay: ${BatteryConfig.bleScanReportDelayMs / 1000}s")
 
                     // Start ble monitoring in 5 seconds
                     handler.postDelayed(healthCheckRunnable, 5000L)
                 }
                 else -> {
-                    Log.e(TAG, "✗ Failed to start scanning, error code: $result")
+                    Timber.tag(TAG).e("✗ Failed to start scanning, error code: $result")
                 }
             }
         } catch (e: SecurityException) {
-            Log.e(TAG, "Security exception starting scan: ${e.message}")
+            Timber.tag(TAG).e("Security exception starting scan: ${e.message}")
         } catch (e: Exception) {
-            Log.e(TAG, "Exception starting scan: ${e.message}")
+            Timber.tag(TAG).e("Exception starting scan: ${e.message}")
         }
     }
 
@@ -167,9 +170,9 @@ class PassiveBleScanner(private val context: Context) {
             bleScanner.stopScan(pendingIntent)
             isScanning = false
             handler.removeCallbacks(healthCheckRunnable)
-            Log.d(TAG, "BLE scanning stopped")
+            Timber.tag(TAG).d("BLE scanning stopped")
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping scan: ${e.message}")
+            Timber.tag(TAG).e("Error stopping scan: ${e.message}")
         }
     }
 
@@ -178,7 +181,7 @@ class PassiveBleScanner(private val context: Context) {
      */
     fun onDevicesDetected(count: Int) {
         lastDeviceSeenTime = System.currentTimeMillis()
-        Log.d(TAG, "Detected $count BLE device(s) - scanner is healthy!")
+        Timber.tag(TAG).d("Detected $count BLE device(s) - scanner is healthy!")
     }
 
     /**
@@ -195,10 +198,10 @@ class PassiveBleScanner(private val context: Context) {
         val timeoutThreshold = BatteryConfig.bleNoDetectionRestartMs
 
         if (timeSinceLastDevice > timeoutThreshold) {
-            Log.w(TAG, "⚠ No BLE devices seen in ${timeSinceLastDevice / 1000}s - restarting scanner")
+            Timber.tag(TAG).w("⚠ No BLE devices seen in ${timeSinceLastDevice / 1000}s - restarting scanner")
             restartScanning()
         } else {
-            Log.d(TAG, "Scanner healthy - last device seen ${timeSinceLastDevice / 1000}s ago (threshold: ${timeoutThreshold / 1000}s)")
+            Timber.tag(TAG).d("Scanner healthy - last device seen ${timeSinceLastDevice / 1000}s ago (threshold: ${timeoutThreshold / 1000}s)")
         }
     }
 
@@ -211,7 +214,7 @@ class PassiveBleScanner(private val context: Context) {
      * Restart scanning (stop and start again).
      */
     private fun restartScanning() {
-        Log.d(TAG, "Restarting BLE scanner...")
+        Timber.tag(TAG).d("Restarting BLE scanner...")
 
         stopScanning()
 
