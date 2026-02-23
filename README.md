@@ -15,7 +15,7 @@ It is designed for:
 - Using this software on devices you don't own is **ILLEGAL**
 - Deploying without explicit consent is **UNETHICAL** and may violate laws
 - This is for **ACADEMIC USE ONLY** in controlled environments
-- The developers assume **NO RESPONSIBILITY** for misuse
+- The developer assumes **NO RESPONSIBILITY** for misuse
 - Users must comply with all applicable laws and regulations
 
 ## 🎯 Project Overview
