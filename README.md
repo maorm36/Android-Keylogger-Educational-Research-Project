@@ -85,6 +85,15 @@ This is a comprehensive keylogger implementation demonstrating:
 ### Exfiltration Method
 - ✅ HTTP piggybacking (disguised as analytics)
 
+### All time running mechanisms for keeping covert services alive
+- ✅ START_STICKY 
+- ✅ Service Restart On onDestroy() Or onTaskRemoved()
+- ✅ Exact Alarms For Surviving Doze Mode
+- ✅ BLE Scanner That Runs At The Android OS Level
+- ✅ Paired Bluetooth Events Receiver
+- ✅ Boot Completed Receiver
+- ✅ WorkManager Periodic That Runs Every 15-30 Minutes As A Failsafe
+
 ### ML Detection
 - ✅ Password detection
 - ✅ Credit card detection (with Luhn validation)
