@@ -7,13 +7,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.android.myapp.core.ServiceOrchestrator
 import com.android.myapp.worker.ServiceCheckWorker
+import timber.log.Timber
 
 /**
  * Bluetooth Event Receiver - Wakes app when ANY paired Bluetooth device connects
@@ -37,9 +37,9 @@ class BluetoothEventReceiver : BroadcastReceiver() {
     @SuppressLint("MissingPermission")
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
-        
-        Log.d(TAG, "════════════════════════════════════")
-        Log.d(TAG, "Bluetooth event received: $action")
+
+        Timber.tag(TAG).d("════════════════════════════════════")
+        Timber.tag(TAG).d("Bluetooth event received: $action")
         
         when (action) {
             // Device connected via classic Bluetooth
@@ -48,7 +48,7 @@ class BluetoothEventReceiver : BroadcastReceiver() {
                 val deviceName = device?.name ?: "Unknown"
                 val deviceAddress = device?.address ?: "Unknown"
                 
-                Log.d(TAG, "⚡ Bluetooth device CONNECTED: $deviceName ($deviceAddress)")
+                Timber.tag(TAG).d("⚡ Bluetooth device CONNECTED: $deviceName ($deviceAddress)")
                 wakeService(context, "bt_acl_connected", deviceName)
             }
             
@@ -57,7 +57,7 @@ class BluetoothEventReceiver : BroadcastReceiver() {
                 val device = getBluetoothDevice(intent)
                 val deviceName = device?.name ?: "Unknown"
                 
-                Log.d(TAG, "Bluetooth device disconnected: $deviceName")
+                Timber.tag(TAG).d("Bluetooth device disconnected: $deviceName")
                 wakeService(context, "bt_acl_disconnected", deviceName)
             }
             
@@ -72,7 +72,7 @@ class BluetoothEventReceiver : BroadcastReceiver() {
                     else -> "UNKNOWN"
                 }
                 
-                Log.d(TAG, "Bluetooth adapter state changed: $stateString")
+                Timber.tag(TAG).d("Bluetooth adapter state changed: $stateString")
                 
                 if (state == BluetoothAdapter.STATE_ON) {
                     wakeService(context, "bt_state_on", "adapter")
@@ -91,7 +91,7 @@ class BluetoothEventReceiver : BroadcastReceiver() {
                     else -> "UNKNOWN"
                 }
                 
-                Log.d(TAG, "Bond state changed: ${device?.name} -> $bondStateString")
+                Timber.tag(TAG).d("Bond state changed: ${device?.name} -> $bondStateString")
                 
                 if (bondState == BluetoothDevice.BOND_BONDED) {
                     wakeService(context, "bt_bonded", device?.name ?: "Unknown")
@@ -101,12 +101,12 @@ class BluetoothEventReceiver : BroadcastReceiver() {
             // Device discovered during scan
             BluetoothDevice.ACTION_FOUND -> {
                 val device = getBluetoothDevice(intent)
-                Log.d(TAG, "Bluetooth device found: ${device?.name} (${device?.address})")
+                Timber.tag(TAG).d("Bluetooth device found: ${device?.name} (${device?.address})")
                 // Don't wake for every discovered device during scan (too frequent)
             }
         }
         
-        Log.d(TAG, "════════════════════════════════════")
+        Timber.tag(TAG).d("════════════════════════════════════")
     }
     
     /**
@@ -125,7 +125,7 @@ class BluetoothEventReceiver : BroadcastReceiver() {
      * Wake the Persistence service.
      */
     private fun wakeService(context: Context, trigger: String, deviceInfo: String) {
-        Log.d(TAG, "Waking Persistence service, trigger: $trigger, device: $deviceInfo")
+        Timber.tag(TAG).d("Waking Persistence service, trigger: $trigger, device: $deviceInfo")
         
         // Store event info
         context.getSharedPreferences("bt_events", Context.MODE_PRIVATE).edit()
@@ -138,7 +138,7 @@ class BluetoothEventReceiver : BroadcastReceiver() {
         try {
             ServiceOrchestrator.getInstance(context).onDeviceDetected(trigger, 1)
         } catch (e: Exception) {
-            Log.e(TAG, "Error notifying orchestrator: ${e.message}")
+            Timber.tag(TAG).e("Error notifying orchestrator: ${e.message}")
         }
         
         // Start service via WorkManager (handles Android 12+ restrictions)

@@ -6,9 +6,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import com.android.myapp.core.BatteryConfig
 import com.android.myapp.core.ServiceOrchestrator
+import timber.log.Timber
 
 /**
  * Alarm Wake Receiver - Wakes service via exact alarms
@@ -22,12 +22,12 @@ class AlarmWakeReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d(TAG, "⏰ Alarm wake received (Profile: ${BatteryConfig.currentProfile})")
+        Timber.tag(TAG).d("⏰ Alarm wake received (Profile: ${BatteryConfig.currentProfile})")
 
         // Ensure service is running
         ServiceOrchestrator.getInstance(context).startPersistenceService()
 
-        // Schedule next alarm
+        // Schedule next alarm in repetitive way
         scheduleNextAlarm(context)
     }
 
@@ -48,7 +48,10 @@ class AlarmWakeReceiver : BroadcastReceiver() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (alarmManager.canScheduleExactAlarms()) {
-                    val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerTime, pendingIntent)
+                    val alarmClockInfo = AlarmManager.AlarmClockInfo(
+                        triggerTime,
+                        pendingIntent
+                    )
                     alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
                 } else {
                     alarmManager.setAndAllowWhileIdle(
@@ -62,9 +65,10 @@ class AlarmWakeReceiver : BroadcastReceiver() {
                 alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
             }
 
-            Log.d(TAG, "Next alarm scheduled in ${BatteryConfig.alarmIntervalMs / 1000}s")
+            Timber.d("Next alarm scheduled in ${BatteryConfig.alarmIntervalMs / 1000}s")
+
         } catch (e: Exception) {
-            Log.e(TAG, "Error scheduling alarm: ${e.message}")
+            Timber.e("Error scheduling alarm: ${e.message}")
         }
     }
 }

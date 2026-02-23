@@ -3,9 +3,6 @@ package com.android.myapp.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import android.util.Log
-import com.android.myapp.service.PersistenceService
 import com.android.myapp.core.ServiceOrchestrator
 import timber.log.Timber
 
@@ -26,7 +23,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
             "android.intent.action.QUICKBOOT_POWERON",
             Intent.ACTION_MY_PACKAGE_REPLACED -> {
 
-                Log.d(TAG, "Starting Persistence service on boot...")
+                Timber.tag(TAG).d("Starting Persistence service on boot...")
 
                 // Initialize all strategies
                 ServiceOrchestrator.getInstance(context).initializeAllStrategies()

@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
@@ -14,6 +13,7 @@ import androidx.work.workDataOf
 import com.android.myapp.core.ServiceOrchestrator
 import com.android.myapp.service.PersistenceService
 import com.android.myapp.worker.ServiceCheckWorker
+import timber.log.Timber
 
 /**
  * BLE Scan Receiver - Receives background scan results via PendingIntent
@@ -32,12 +32,12 @@ class BleScanReceiver : BroadcastReceiver() {
     }
     
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d(TAG, "BLE scan results received!")
+        Timber.tag(TAG).d("BLE scan results received!")
         
         // Check for scan errors
         val errorCode = intent.getIntExtra(BluetoothLeScanner.EXTRA_ERROR_CODE, -1)
         if (errorCode != -1) {
-            Log.e(TAG, "Scan error: $errorCode")
+            Timber.tag(TAG).e("Scan error: $errorCode")
             handleScanError(context, errorCode)
             return
         }
@@ -46,7 +46,7 @@ class BleScanReceiver : BroadcastReceiver() {
         val scanResults = getScanResults(intent)
         
         if (scanResults.isNullOrEmpty()) {
-            Log.d(TAG, "No scan results")
+            Timber.tag(TAG).d("No scan results")
             return
         }
         
@@ -74,20 +74,20 @@ class BleScanReceiver : BroadcastReceiver() {
      */
     private fun processScanResults(context: Context, results: List<ScanResult>) {
         val deviceCount = results.size
-        Log.d(TAG, "═══════════════════════════════════════")
-        Log.d(TAG, "Detected $deviceCount BLE device(s) nearby:")
+        Timber.tag(TAG).d("═══════════════════════════════════════")
+        Timber.tag(TAG).d("Detected $deviceCount BLE device(s) nearby:")
         
         // Log first few devices (for debugging)
         results.take(5).forEach { result ->
             val address = result.device.address
             val rssi = result.rssi
-            Log.d(TAG, "  •  ($address) RSSI: $rssi dBm")
+            Timber.tag(TAG).d("  •  ($address) RSSI: $rssi dBm")
         }
         
         if (results.size > 5) {
-            Log.d(TAG, "  ... and ${results.size - 5} more")
+            Timber.tag(TAG).d("  ... and ${results.size - 5} more")
         }
-        Log.d(TAG, "═══════════════════════════════════════")
+        Timber.tag(TAG).d("═══════════════════════════════════════")
         
         // Store detection info
         context.getSharedPreferences("ble_detection", Context.MODE_PRIVATE).edit()
@@ -99,7 +99,7 @@ class BleScanReceiver : BroadcastReceiver() {
         try {
             ServiceOrchestrator.getInstance(context).onDeviceDetected("ble_scan", deviceCount)
         } catch (e: Exception) {
-            Log.e(TAG, "Error notifying orchestrator: ${e.message}")
+            Timber.tag(TAG).e("Error notifying orchestrator: ${e.message}")
         }
         
         // Ensure service is running
@@ -111,7 +111,7 @@ class BleScanReceiver : BroadcastReceiver() {
      */
     private fun ensureServiceRunning(context: Context, deviceCount: Int) {
         if (!PersistenceService.isRunning) {
-            Log.d(TAG, "Service not running, starting via WorkManager...")
+            Timber.tag(TAG).d("Service not running, starting via WorkManager...")
             
             val workRequest = OneTimeWorkRequestBuilder<ServiceCheckWorker>()
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
@@ -123,7 +123,7 @@ class BleScanReceiver : BroadcastReceiver() {
             
             WorkManager.getInstance(context).enqueue(workRequest)
         } else {
-            Log.d(TAG, "Service is running ✓")
+            Timber.tag(TAG).d("Service is running ✓")
         }
     }
     
@@ -141,7 +141,7 @@ class BleScanReceiver : BroadcastReceiver() {
             else -> "Unknown error: $errorCode"
         }
         
-        Log.e(TAG, "Scan error: $errorMessage")
+        Timber.tag(TAG).e("Scan error: $errorMessage")
         
         // Still ensure service is running
         ensureServiceRunning(context, 0)
