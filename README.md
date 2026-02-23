@@ -259,7 +259,7 @@ dashboardURL: "https://your-server.com/public/web_dashboard.html"
 - View all captured data
 - Filter by event type   
         
-Pay attention to the interval of uploading data process!!!!!!
+Pay attention to the interval of the uploading data process which is every 15 minutes
 
 ## 🔬 Research Applications
 
