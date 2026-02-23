@@ -206,12 +206,12 @@ ML_For_Keylogger/
 
 ## Android App Setup
 
-1. **Clone each part of the keylogger project (android, nodejs, python to your matching IDEs**
+1. **Clone each part of the keylogger project: android, nodejs, python to your matching IDEs envs**
 
 2. **Configure API key**
 ```kotlin
-private val apiKey = "your-secret-api-key"
-private val serverUrl = "https://your-server.com"
+private val apiKey = BuildConfig.MY_API_KEY // YOUR-API-KEY
+private val serverUrl = BuildConfig.SERVER_URL // YOUR-SERVER-URL
 ```
 
 3. **Build the app**
@@ -222,9 +222,9 @@ private val serverUrl = "https://your-server.com"
 
 1. **Install the node dependencies**
 
-2. **Configure API key in app.js**
+2. **Configure the same API key in app.js**
 ```javascript
-const API_KEY = 'your-secret-api-key';
+const API_KEY = 'your-secret-api-key'; // YOUR-API-KEY
 ```
 
 3. **Run server (app.js)**
@@ -258,6 +258,7 @@ dashboardURL: "https://your-server.com/public/web_dashboard.html"
 - Access web dashboard at `http://your-server-url/public/web_dashboard.html`
 - View all captured data
 - Filter by event type
+Pay attention to the interval of uploading data process!!!!!!
 
 ## 🔬 Research Applications
 
@@ -320,7 +321,7 @@ If you discover vulnerabilities in this code or real-world applications:
 
 Developed for academic research in mobile security.
 
-**Remember**: With great power comes great responsibility.  
+**Remember**: 
 Use this knowledge ethically.
 
 ---
