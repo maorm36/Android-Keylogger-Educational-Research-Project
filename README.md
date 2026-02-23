@@ -306,7 +306,6 @@ dashboardURL: "https://your-server.com/public/web_dashboard.html"
 
 This project is licensed under the MIT License for **EDUCATIONAL PURPOSES ONLY**.
 
-See [LICENSE](LICENSE) file for details.
 
 ## ⚖️ Responsible Disclosure
 
