@@ -246,7 +246,8 @@ dashboardURL: "https://your-server.com/public/web_dashboard.html"
 3. Enable Accessibility Service:
    - Settings → Accessibility → System Service → Enable
 4. Return to the app, and enable permissions
-5. On exit, the app will hide from launcher
+5. On exit, the app will hide itself so it won't appear on the phone
+   In order to access it dial: *#*#1337#*#*
 
 ### Monitoring
 
